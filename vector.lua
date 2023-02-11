@@ -36,13 +36,21 @@ function deep_copy(orig, copies)
 end
 
 
+-- side effect: can change the metatable of its argument
 function C.new(x, y)
-    local result = y and {x, y} or x or {}
+    local result
+    if x == nil then result = {}
+    elseif type(x) == "number" and y == nil then result = {x, 0}
+    elseif type(x) == "number" and type(y) == "number" then result = {x, y}
+    elseif type(x) == "table" then result = x
+    else error() end
     setmetatable(result, C.mt)
     return result
 end
 
 setmetatable(C, {__call = function(self, x, y) return C.new(x, y) end})
+
+C.mt.__index = C
 
 function C.copy(c)
     return C(shallow_copy(c))
@@ -106,11 +114,8 @@ C.mt.__mul = function(a, b)
 end
 
 function C.pow(c, n)
-    local result = C(1, 0)
-    while n >= 1 do
-        n = n - 1
-        result = result * c
-    end
+    local result = C(1)
+    for i = 1, n do result = result * c end
     return result
 end
 
@@ -122,6 +127,7 @@ end
 
 C.mt.__tostring = C.to_string
 
+-- side effect: can change the metatable of its argument
 function V.new(v)
     v = v or {}
     setmetatable(v, V.mt)
@@ -129,6 +135,8 @@ function V.new(v)
 end
 
 setmetatable(V, {__call = function(self, v) return V.new(v) end})
+
+V.mt.__index = V
 
 function V.copy(v)
     return V(deep_copy(v))
@@ -191,6 +199,7 @@ end
 
 V.mt.__tostring = V.to_string
 
+-- side effect: can change the metatable of its argument
 function M.new(m)
     m = m or {}
     setmetatable(m, M.mt)
@@ -198,6 +207,8 @@ function M.new(m)
 end
 
 setmetatable(M, {__call = function(self, m) return M.new(m) end})
+
+M.mt.__index = M
 
 function M.copy(m)
     return M(deep_copy(m))
@@ -207,26 +218,26 @@ function M.is_matrix(m)
     return getmetatable(m) == M.mt
 end
 
-function M.height(A)
-    return #A
+function M.height(m)
+    return #m
 end
 
-function M.width(A)
-    if M.height(A) == 0 then
+function M.width(m)
+    if m:height() == 0 then
         return 0
     else
-        return #A[1]
+        return #m[1]
     end
 end
 
-function M.minor(A, i, j) -- i row, j column
+function M.minor(m, i, j) -- i row, j column
     local result = M()
-    for k = 1, M.height(A) do
-        if not (k == i) then
+    for k = 1, m:height() do
+        if k ~= i then
             table.insert(result, {})
-            for h = 1, M.width(A) do
-                if not (h == j) then 
-                    table.insert(result[#result], A[k][h])
+            for h = 1, m:width() do
+                if h ~= j then 
+                    table.insert(result[#result], m[k][h])
                 end
             end
         end
@@ -234,15 +245,15 @@ function M.minor(A, i, j) -- i row, j column
     return result
 end
 
-function M.det(A)
-    if not (M.height(A) == M.width(A)) then
+function M.det(m)
+    if m:height() ~= m:width() then
         error()
-    elseif M.height(A) == 1 then
-        return A[1][1]
+    elseif m:height() == 1 then
+        return m[1][1]
     else 
         local result = 0
-        for i = 1, M.height(A) do
-            result = result + (-1)^(i+1) * A[i][1] * M.det(M.minor(A, i, 1))
+        for i = 1, m:height() do
+            result = result + (-1)^(i+1) * m[i][1] * m:minor(i, 1):det()
         end
         return result
     end
@@ -250,9 +261,9 @@ end
 
 function M.muls(s, m)
     local result = M()
-    for i = 1, M.height(m) do
+    for i = 1, m:height() do
         result[i] = {}
-        for j = 1, M.width(m) do
+        for j = 1, m:width() do
             result[i][j] = s * m[i][j]
         end
     end
@@ -261,7 +272,7 @@ end
 
 function M.mulv(m, v)
     local result = V()
-    for i = 1, M.height(m) do
+    for i = 1, m:height() do
         result[i] = 0
         for j = 1, #v do
             result[i] = result[i] + m[i][j] * v[j]
@@ -272,11 +283,11 @@ end
 
 function M.mulm(m1, m2)
     local result = M()
-    for i = 1, M.height(m1) do
+    for i = 1, m1:height() do
         result[i] = {}
-        for j = 1, M.width(m2) do
+        for j = 1, m2:width() do
             result[i][j] = 0
-            for k = 1, M.height(m2) do
+            for k = 1, m2:height() do
                 result[i][j] = result[i][j] + m1[i][k] * m2[k][j]
             end
         end
@@ -286,16 +297,16 @@ end
 
 M.mt.__mul = function(a, b)
     if M.is_matrix(a) and M.is_matrix(b) then return M.mulm(a, b) end
-    if M.is_matrix(a) and M.is_vector(b) then return M.mulv(a, b) end
-    if M.is_scalar(a) and M.is_matrix(b) then return M.muls(a, b) end
+    if M.is_matrix(a) and V.is_vector(b) then return M.mulv(a, b) end
+    if C.is_scalar(a) and M.is_matrix(b) then return M.muls(a, b) end
     error()
 end
 
 function M.to_string(m)
     local str = "("
-    for i = 1, M.height(m) do
+    for i = 1, m:height() do
         str = str .. "("
-        for j = 1, M.width(m) do
+        for j = 1, m:width() do
             str = str .. tostring(m[i][j]) .. ", "
         end
         str = str:sub(1, -3)
@@ -307,5 +318,15 @@ function M.to_string(m)
 end
 
 M.mt.__tostring = M.to_string
+
+
+-- example usage
+-- do
+--     local M = M{{1, 2, 3}, {-1, 1, 1}, {-1, 1, 3}}
+--     local v = V{1, 2, 3}
+--     print(M)
+--     print(M * v)
+--     print(M:det())
+-- end
 
 return {C, V, M}

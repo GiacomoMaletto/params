@@ -4,17 +4,15 @@ local S = require "symbol"
 local sw, sh = love.graphics.getDimensions()
 
 local xs = {}
-xs[1] = C(1, 0)
-xs[2] = C(0, 0)
-xs[3] = C(0, 0)
-xs[4] = C(0, 0)
+xs[1] = C(1)
+xs[2] = C(0)
+xs[3] = C(0)
+xs[4] = C(0)
 
 local F = function(x)
-    return V.new({
-        x[1] * x[4] - x[2] * x[3],
-        x[1] * x[3] - x[2] * x[2],
-        x[2] * x[4] - x[3] * x[3],
-    })
+    return V.new({x[1] * x[4] - x[2] * x[3],
+                  x[1] * x[3] - x[2] * x[2],
+                  x[2] * x[4] - x[3] * x[3],})
 end
 
 local sel_x = 1
@@ -41,8 +39,7 @@ function love.update(dt)
     if love.keyboard.isDown("left") then dx = dx - 1 end
     if love.keyboard.isDown("up") then dy = dy + 1 end
     if love.keyboard.isDown("down") then dy = dy - 1 end
-    xs[sel_x][1] = xs[sel_x][1] + dx * dt
-    xs[sel_x][2] = xs[sel_x][2] + dy * dt
+    xs[sel_x] = xs[sel_x] + dt * C(dx, dy)
 end
 
 function love.keypressed(key, scancode, isrepeat)

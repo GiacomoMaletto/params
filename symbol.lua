@@ -13,6 +13,7 @@ end
 local S = {}
 S.mt = {}
 
+-- side effect: can change the metatable of its argument
 function S.new(s)
     if getmetatable(s) == S.mt then return s end
     local result
@@ -86,7 +87,7 @@ function S.is_sub(e)
 end
 
 function S.is_add_or_sub(e)
-    return e:is_add() or e:is_sub()
+    return S.is_add(e) or S.is_sub(e)
 end
 
 function S.is_mul(e)
@@ -99,10 +100,10 @@ function S.is_pow(e)
 end
 
 function S.is_bin(e)
-    return e:is_add() or e:is_sub() or e:is_mul() or e:is_pow()
+    return S.is_add(e) or S.is_sub(e) or S.is_mul(e) or S.is_pow(e)
 end
 
--- side effect: changes the metatable of its arguments
+-- side effect: can change the metatable of its arguments
 function S.add(e, f)
     e, f = S(e), S(f)
     if e:is_empty() and f:is_empty() then return S()
@@ -113,7 +114,7 @@ end
 
 S.mt.__add = S.add
 
--- side effect: changes the metatable of its arguments
+-- side effect: can change the metatable of its arguments
 function S.sub(e, f)
     e, f = S(e), S(f)
     if e:is_empty() and f:is_empty() then return S()
@@ -124,7 +125,7 @@ end
 
 S.mt.__sub = S.sub
 
--- side effect: changes the metatable of its arguments
+-- side effect: can change the metatable of its arguments
 function S.mul(e, f)
     e, f = S(e), S(f)
     if e:is_empty() and f:is_empty() then return S()
@@ -135,7 +136,7 @@ end
 
 S.mt.__mul = S.mul
 
--- side effect: changes the metatable of its arguments
+-- side effect: can change the metatable of its arguments
 function S.pow(e, n)
     e, n = S(e), S(n)
     if e:is_empty() then return S()
