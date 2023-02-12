@@ -184,8 +184,12 @@ end
 
 V.mt.__mul = function(a, b)
     if V.is_vector(a) and V.is_vector(b) then return V.dot(a, b) end
-    if V.is_scalar(a) and V.is_vector(b) then return V.mul(a, b) end
+    if C.is_scalar(a) and V.is_vector(b) then return V.mul(a, b) end
     error()
+end
+
+function V.length(v)
+    return math.sqrt(v * v)
 end
 
 function V.to_string(v)
@@ -227,35 +231,6 @@ function M.width(m)
         return 0
     else
         return #m[1]
-    end
-end
-
-function M.minor(m, i, j) -- i row, j column
-    local result = M()
-    for k = 1, m:height() do
-        if k ~= i then
-            table.insert(result, {})
-            for h = 1, m:width() do
-                if h ~= j then 
-                    table.insert(result[#result], m[k][h])
-                end
-            end
-        end
-    end
-    return result
-end
-
-function M.det(m)
-    if m:height() ~= m:width() then
-        error()
-    elseif m:height() == 1 then
-        return m[1][1]
-    else 
-        local result = 0
-        for i = 1, m:height() do
-            result = result + (-1)^(i+1) * m[i][1] * m:minor(i, 1):det()
-        end
-        return result
     end
 end
 
@@ -319,14 +294,88 @@ end
 
 M.mt.__tostring = M.to_string
 
+function M.minor(m, i, j) -- i row, j column
+    local result = M()
+    for k = 1, m:height() do
+        if k ~= i then
+            table.insert(result, {})
+            for h = 1, m:width() do
+                if h ~= j then 
+                    table.insert(result[#result], m[k][h])
+                end
+            end
+        end
+    end
+    return result
+end
+
+function M.cramer(m)
+    if m:height() ~= m:width() then
+        error()
+    elseif m:height() == 1 then
+        return m[1][1]
+    else 
+        local result = 0
+        for i = 1, m:height() do
+            result = result + (-1)^(i+1) * m[i][1] * m:minor(i, 1):cramer()
+        end
+        return result
+    end
+end
+
+function M.conj_grad(A, b, x_0)
+    local x = x_0:copy()
+    local r = b - A * x;
+    if math.sqrt(r * r) < 1e-8 then return x end
+    local p = r;
+    local rsold = r * r;
+
+    local Ap, alpha, rsnew
+    for i = 1, #b do
+        Ap = A * p;
+        alpha = rsold / (p * Ap);
+        x = x + alpha * p;
+        r = r - alpha * Ap;
+        rsnew = r * r;
+        if math.sqrt(rsnew) < 1e-8 then
+            break
+        end
+        p = r + (rsnew / rsold) * p;
+        rsold = rsnew;
+    end
+    return x
+
+    -- x = x_0:copy()
+    -- local r = b - A * x
+    -- if r:length() < 1e-8 then return x end
+    -- local p = r
+    -- local alpha, beta, rp
+    -- local i = 0
+    -- while i < 100 do
+    --     alpha = (r * r) / (p * (A * p))
+    --     x = x + alpha * p
+    --     rp = r - alpha * A * p
+    --     if rp:length() < 1e-8 then return x end
+    --     print(rp:length())
+    --     beta = (rp * rp) / (r * r)
+    --     p = rp + beta * p
+    --     i = i + 1
+    -- end
+end
 
 -- example usage
 -- do
---     local M = M{{1, 2, 3}, {-1, 1, 1}, {-1, 1, 3}}
---     local v = V{1, 2, 3}
---     print(M)
---     print(M * v)
---     print(M:det())
+    -- local M = M{{1, 2, 3}, {-1, 1, 1}, {-1, 1, 3}}
+    -- local v = V{1, 2, 3}
+    -- print(M)
+    -- print(M * v)
+    -- print(M:det())
+
+    -- local A = M{{4, 1}, {1, 3}}
+    -- local b = V{1, 2}
+    -- local x_0 = V{2, 1}
+    -- local x = M.conj_grad(A, b, x_0)
+    -- print(x)
 -- end
 
 return {C, V, M}
