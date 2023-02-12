@@ -3,33 +3,32 @@ local S = require "symbol"
 
 local sw, sh = love.graphics.getDimensions()
 
-local n_var = 4
+local n_var = 3
 local x_v = {}
-x_v[1] = C(1)
+x_v[1] = C(0)
 x_v[2] = C(0)
 x_v[3] = C(0)
-x_v[4] = C(0)
 
 local F = function(x)
-    return V{x_v[1] * x_v[4] - x_v[2] * x_v[3],
+    return V{x_v[1] - x_v[2] * x_v[3],
              x_v[1] * x_v[3] - x_v[2] * x_v[2],
-             x_v[2] * x_v[4] - x_v[3] * x_v[3]}
+             x_v[2] - x_v[3] * x_v[3]}
 end
 
-local vars = {"x1", "x2", "x3", "x4"}
-local vars_cpx = {"y1", "z1", "y2", "z2", "y3", "z3", "y4", "z4"}
-local vars_real = {"y1", "y2", "y3", "y4"}
-local vars_imag = {"z1", "z2", "z3", "z4"}
-local vars_cpx_to_real = {x1={"y1", "z1"}, x2={"y2", "z2"}, x3={"y3", "z3"}, x4={"y4", "z4"}}
+local vars = {"x1", "x2", "x3"}
+local vars_cpx = {"y1", "z1", "y2", "z2", "y3", "z3"}
+local vars_real = {"y1", "y2", "y3"}
+local vars_imag = {"z1", "z2", "z3"}
+local vars_cpx_to_real = {x1={"y1", "z1"}, x2={"y2", "z2"}, x3={"y3", "z3"}}
 
 local x_s = {}
 for k, v in ipairs(vars) do x_s[k] = S(v) end
 
 local n_eq = 3
 local f_s = {}
-f_s[1] = x_s[1]*x_s[4] - x_s[2]*x_s[3]
+f_s[1] = x_s[1] - x_s[2]*x_s[3]
 f_s[2] = x_s[1]*x_s[3] - x_s[2]*x_s[2]
-f_s[3] = x_s[2]*x_s[4] - x_s[3]*x_s[3]
+f_s[3] = x_s[2] - x_s[3]*x_s[3]
 
 local f_real_s = {}
 for i = 1, n_eq do
@@ -61,13 +60,11 @@ local size = {}
 size[1] = 15
 size[2] = 12
 size[3] = 9
-size[4] = 6
 
 local colors = {}
 colors[1] = {1, 0, 0}
 colors[2] = {0, 1, 0}
 colors[3] = {0, 0, 1}
-colors[4] = {1, 1, 1}
 
 local t = 0
 function love.update(dt)
@@ -82,7 +79,7 @@ function love.update(dt)
     if love.keyboard.isDown("down") then dy = dy - 1 end
     x_v[sel_x] = x_v[sel_x] + 0.1 * dt * C(dx, dy)
 
-    for k = 1, 5 do
+    for k = 1, 10 do
         local vars_v = {}
         for i = 1, n_var do
             vars_v[vars_real[i]] = x_v[i][1]
@@ -116,6 +113,7 @@ function love.update(dt)
         end end
 
         local h = M.conj_grad(A, b, h_0)
+        print(b)
 
         local step = 0.1
         local j = 1
@@ -130,16 +128,31 @@ function love.keypressed(key, scancode, isrepeat)
     if key == "1" then sel_x = 1 end
     if key == "2" then sel_x = 2 end
     if key == "3" then sel_x = 3 end
-    if key == "4" then sel_x = 4 end
 end
 
 function love.draw()
     love.graphics.setColor(colors[sel_x])
     love.graphics.print(sel_x, 0, 0)
 
-    love.graphics.setColor(1, 1, 1)
-    local F_x = F(xs)
-    love.graphics.print(V.to_string(F_x), 0, 10)
+    do
+        -- love.graphics.setColor(1, 1, 1)
+        -- local F_x = F(xs)
+        -- love.graphics.print(V.to_string(F_x), 0, 10)
+        local vars_v = {}
+        for i = 1, n_var do
+            vars_v[vars_real[i]] = x_v[i][1]
+            vars_v[vars_imag[i]] = x_v[i][2]
+        end
+
+        love.graphics.setColor(1, 1, 1)
+        love.graphics.print(g_s:eval(vars_v), 0, 10)
+        love.graphics.print(g_s:der("y1"):eval(vars_v), 0, 20)
+        love.graphics.print(g_s:der("y2"):eval(vars_v), 0, 30)
+        love.graphics.print(g_s:der("y3"):eval(vars_v), 0, 40)
+        love.graphics.print(g_s:der("z2"):eval(vars_v), 200, 30)
+        love.graphics.print(g_s:der("z1"):eval(vars_v), 200, 20)
+        love.graphics.print(g_s:der("z3"):eval(vars_v), 200, 40)
+    end
 
     for i = 1, #x_v do
         local sx = sw/2 + 100 * x_v[i][1]
