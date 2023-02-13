@@ -74,6 +74,14 @@ function C.is_zero(x)
     else error() end
 end
 
+function C.modulus2(c)
+    return c[1]^2 + c[2]^2
+end
+
+function C.modulus(c)
+    return math.sqrt(c:modulus2())
+end
+
 function C.add(c1, c2)
     local result = C()
     result[1] = c1[1] + c2[1]
@@ -81,7 +89,7 @@ function C.add(c1, c2)
     return result
 end
 
-C.mt.__add = C.add
+C.mt.__add = function(a, b) return C.add(C(a), C(b)) end
 
 function C.sub(c1, c2)
     local result = C()
@@ -90,12 +98,12 @@ function C.sub(c1, c2)
     return result
 end
 
-C.mt.__sub = C.sub
+C.mt.__sub = function(a, b) return C.sub(C(a), C(b)) end
 
 function C.mul(c1, c2)
     local result = C()
     result[1] = c1[1]*c2[1] - c1[2]*c2[2]
-    result[2] = c1[1]*c2[2] - c1[2]*c2[1]
+    result[2] = c1[1]*c2[2] + c1[2]*c2[1]
     return result
 end
 
@@ -139,7 +147,13 @@ setmetatable(V, {__call = function(self, v) return V.new(v) end})
 V.mt.__index = V
 
 function V.copy(v)
-    return V(deep_copy(v))
+    local result = V()
+    for i = 1, #v do
+        if C.is_complex(v[i]) then result[i] = v[i]:copy()
+        elseif C.is_real(v[i]) then result[i] = v[i]
+        else error() end
+    end
+    return result
 end
 
 function V.is_vector(x)
